@@ -12,6 +12,8 @@ data_path = "../point_cloud/"
 csv_name = "Lake_Aydat.csv"
 csv_path = data_path + csv_name
 output_dir = "../../resultat/" + csv_name.replace(".csv", "") + "/"
+os.makedirs(output_dir, exist_ok=True)
+
 output_image = output_dir + csv_name.replace(".csv", "") + "_nuage_points.png"
 
 # -----------------------------
@@ -50,7 +52,6 @@ ax.set_title("Nuage de points 3D")
 # -----------------------------
 # ENREGISTREMENT DIRECT
 # -----------------------------
-os.makedirs(output_dir, exist_ok=True)
 plt.savefig(output_image, dpi=300)
 plt.close(fig)  # ferme la figure pour libérer la mémoire
 

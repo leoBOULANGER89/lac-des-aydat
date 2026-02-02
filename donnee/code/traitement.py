@@ -97,7 +97,7 @@ for y in range(height):
             if 0 <= nx < width and 0 <= ny < height:
                 neighbor_depth = depth_map[ny, nx]
 
-                if neighbor_depth < current_depth:
+                if neighbor_depth > current_depth:
                     not_append_point = True
 
                 if neighbor_depth == current_depth:
