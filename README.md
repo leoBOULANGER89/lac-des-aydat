@@ -9,7 +9,7 @@
 
 
 
-## 📂 Strucutre du projet
+## 📂 Structure du projet
 ../
 ├── donnee/
 │ ├── raw/
