@@ -10,6 +10,7 @@ data_path = "../raw/map/LakeAydat/"
 image_path = data_path + "Lake_Aydat_traitee.png"
 csv_path = data_path + "légende.csv"
 output_dir = "../point_cloud/"
+os.makedirs(output_dir, exist_ok=True)
 
 # -----------------------------
 # FONCTIONS
@@ -91,8 +92,7 @@ for y in range(height):
         not_append_point = False
         same_lvl = 0
 
-        for dx, dy in [(-1,0), (1,0), (0,-1), (0,1),
-                       (1,1), (-1,1), (1,-1), (-1,-1)]:
+        for dx, dy in [(-1,0), (1,0), (0,-1), (0,1)]:
             nx, ny = x + dx, y + dy
             if 0 <= nx < width and 0 <= ny < height:
                 neighbor_depth = depth_map[ny, nx]
@@ -103,7 +103,7 @@ for y in range(height):
                 if neighbor_depth == current_depth:
                     same_lvl += 1
 
-        if (not not_append_point) and same_lvl < 8:
+        if (not not_append_point) and same_lvl < 4:
             points.append((x * scale, (height-y) * scale, current_depth))
 
 # -----------------------------
@@ -112,7 +112,6 @@ for y in range(height):
 png_name = os.path.splitext(os.path.basename(image_path))[0]
 output_name = png_name.replace("_traitee", "") + ".csv"
 
-os.makedirs(output_dir, exist_ok=True)
 output_path = os.path.join(output_dir, output_name)
 
 # -----------------------------
