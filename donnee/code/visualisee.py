@@ -1,3 +1,4 @@
+import os
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,8 +9,10 @@ from mpl_toolkits.mplot3d import Axes3D  # nécessaire pour 3D
 # -----------------------------
 
 data_path = "../point_cloud/"
-csv_path = data_path + "Lake_Aydat.csv"
-output_image = data_path + "nuage_points.png"
+csv_name = "Lake_Aydat.csv"
+csv_path = data_path + csv_name
+output_dir = "../../resultat/" + csv_name.replace(".csv", "") + "/"
+output_image = output_dir + csv_name.replace(".csv", "") + "_nuage_points.png"
 
 # -----------------------------
 # LECTURE DU CSV
@@ -21,7 +24,7 @@ with open(csv_path, newline="", encoding="utf-8") as f:
     for row in reader:
         x = float(row["x"])
         y = float(row["y"])
-        z = -float(row["z"])
+        z = float(row["z"])
         points.append((x, y, z))
 
 points = np.array(points)
@@ -41,10 +44,13 @@ ax.set_ylabel("Y (m)")
 ax.set_zlabel("Z (profondeur)")
 ax.set_title("Nuage de points 3D")
 
-ax.view_init(elev=90, azim=-90)
+
+#ax.view_init(elev=90, azim=-90)
+
 # -----------------------------
 # ENREGISTREMENT DIRECT
 # -----------------------------
+os.makedirs(output_dir, exist_ok=True)
 plt.savefig(output_image, dpi=300)
 plt.close(fig)  # ferme la figure pour libérer la mémoire
 

@@ -18,6 +18,26 @@ def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip("#")
     return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
+def color_distance(c1, c2):
+    return np.linalg.norm(np.array(c1) - np.array(c2))
+
+def get_closest_depth(pixel_color, color_depth_dict):
+    """
+    Retourne la profondeur correspondant à la couleur
+    la plus proche (distance RGB minimale).
+    """
+    min_dist = float("inf")
+    closest_depth = None
+
+    for ref_color, depth in color_depth_dict.items():
+        dist = color_distance(pixel_color, ref_color)
+
+        if dist < min_dist:
+            min_dist = dist
+            closest_depth = depth
+
+    return closest_depth
+
 # -----------------------------
 # LECTURE DE L'IMAGE
 # -----------------------------
@@ -47,7 +67,18 @@ with open(csv_path, newline="", encoding="utf-8") as f:
     for row in reader:
         rgb = hex_to_rgb(row[0])
         depth = float(row[1])
-        color_depth[rgb] = depth
+        color_depth[rgb] = -depth
+
+
+# --- pré-calcul des profondeurs ---
+depth_map = np.zeros((height, width))
+
+for y in range(height):
+    for x in range(width):
+        depth_map[y, x] = get_closest_depth(
+            tuple(img_array[y, x]),
+            color_depth
+        )
 
 # -----------------------------
 # DÉTECTION DES JONCTIONS
@@ -56,29 +87,24 @@ points = []
 
 for y in range(height):
     for x in range(width):
-        current_color = tuple(img_array[y, x])
+        current_depth = depth_map[y, x]
+        not_append_point = False
+        same_lvl = 0
 
-        neighbor_colors = set()
-        for dx, dy in [(-1,0), (1,0), (0,-1), (0,1)]:
+        for dx, dy in [(-1,0), (1,0), (0,-1), (0,1),
+                       (1,1), (-1,1), (1,-1), (-1,-1)]:
             nx, ny = x + dx, y + dy
             if 0 <= nx < width and 0 <= ny < height:
-                neighbor_colors.add(tuple(img_array[ny, nx]))
+                neighbor_depth = depth_map[ny, nx]
 
-        if any(c != current_color for c in neighbor_colors):
-            depths = []
+                if neighbor_depth < current_depth:
+                    not_append_point = True
 
-            if current_color in color_depth:
-                depths.append(color_depth[current_color])
+                if neighbor_depth == current_depth:
+                    same_lvl += 1
 
-            for c in neighbor_colors:
-                if c in color_depth:
-                    depths.append(color_depth[c])
-
-            if depths:
-                z = max(depths)
-                x_m = x * scale
-                y_m = y * scale
-                points.append((x_m, y_m, z))
+        if (not not_append_point) and same_lvl < 8:
+            points.append((x * scale, y * scale, current_depth))
 
 # -----------------------------
 # NOM DU CSV DE SORTIE
