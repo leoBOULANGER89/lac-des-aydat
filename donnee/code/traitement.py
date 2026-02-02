@@ -104,7 +104,7 @@ for y in range(height):
                     same_lvl += 1
 
         if (not not_append_point) and same_lvl < 8:
-            points.append((x * scale, y * scale, current_depth))
+            points.append((x * scale, (height-y) * scale, current_depth))
 
 # -----------------------------
 # NOM DU CSV DE SORTIE
