@@ -16,14 +16,23 @@ os.makedirs(output_dir, exist_ok=True)
 output_obj = output_dir + csv_name.replace(".csv", "") + "_Delaunay.obj"
 
 
-# ===== LECTURE DU CSV =====
+# -----------------------------
+# LECTURE DU CSV
+# -----------------------------
+
 data = pd.read_csv(csv_path)
 points = data[["x", "y", "z"]].values
 
-# ===== TRIANGULATION (sur x,y) =====
+# -----------------------------
+# DELAUNAY
+# -----------------------------
+
 tri = Delaunay(points[:, :2])
 
-# ===== ÉCRITURE DU OBJ =====
+# -----------------------------
+# ÉCRITURE DU OBJ
+# -----------------------------
+
 with open(output_obj, "w") as f:
     f.write("# OBJ généré depuis un CSV (x,y,z)\n")
 
@@ -36,4 +45,4 @@ with open(output_obj, "w") as f:
         i, j, k = simplex + 1
         f.write(f"f {i} {j} {k}\n")
 
-print(f"Export terminé : {output_obj}")
+print(f"✅ Surface par Delaunay enregistré : {output_obj}")
