@@ -11,9 +11,6 @@ data_path = "../../donnee/point_cloud/"
 csv_name = "Lake_Aydat.csv"
 csv_path = data_path + csv_name
 output_dir = "../../resultat/" + csv_name.replace(".csv", "") + "/"
-
-os.makedirs(output_dir, exist_ok=True)
-output_dir += "Delaunay/"
 os.makedirs(output_dir, exist_ok=True)
 
 output_obj = output_dir + csv_name.replace(".csv", "") + "_Delaunay.obj"
