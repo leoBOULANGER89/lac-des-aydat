@@ -7,14 +7,19 @@ import math
 # -----------------------------
 # PARAMÈTRES
 # -----------------------------
-data_path = "../raw/map/LakeAydat/"
-image_path = data_path + "Lake_Aydat_traitee.png"
+image_name = "Lake_Aydat_traitee.png"
+
+densitee = 1
+m2 = 50
+
+data_name = image_name.replace("_traitee.png","")
+data_path = "../raw/map/" + data_name + "/"
+image_path = data_path + image_name
 csv_path = data_path + "légende.csv"
 output_dir = "../point_cloud/"
 os.makedirs(output_dir, exist_ok=True)
 
-densitee = 1
-m2 = 50
+output_name = output_dir + data_name + ".csv"
 
 # -----------------------------
 # FONCTIONS
@@ -121,9 +126,6 @@ for y in range(height):
 # -----------------------------
 # NOM DU CSV DE SORTIE
 # -----------------------------
-png_name = os.path.splitext(os.path.basename(image_path))[0]
-output_name = png_name.replace("_traitee", "") + ".csv"
-
 output_path = os.path.join(output_dir, output_name)
 
 # -----------------------------

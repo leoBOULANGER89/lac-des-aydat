@@ -7,14 +7,14 @@ from mpl_toolkits.mplot3d import Axes3D  # nécessaire pour 3D
 # -----------------------------
 # PARAMÈTRES
 # -----------------------------
+data_name = "Lake_Aydat"
 
 data_path = "../point_cloud/"
-csv_name = "Lake_Aydat.csv"
-csv_path = data_path + csv_name
-output_dir = "../../resultat/" + csv_name.replace(".csv", "") + "/"
-os.makedirs(output_dir, exist_ok=True)
+csv_path = data_path + data_name + ".csv"
 
-output_image = output_dir + csv_name.replace(".csv", "") + "_nuage_points.png"
+output_dir = "../../resultat/" + data_name + "/"
+os.makedirs(output_dir, exist_ok=True)
+output_image = output_dir + data_name + "_nuage_points.png"
 
 # -----------------------------
 # LECTURE DU CSV
