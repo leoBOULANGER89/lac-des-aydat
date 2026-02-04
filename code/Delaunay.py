@@ -6,14 +6,15 @@ from scipy.spatial import Delaunay
 # -----------------------------
 # PARAMÈTRES
 # -----------------------------
+name = "Lake_Aydat"
 
-data_path = "../../donnee/point_cloud/"
-csv_name = "Lake_Aydat.csv"
-csv_path = data_path + csv_name
-output_dir = "../../resultat/" + csv_name.replace(".csv", "") + "/"
+
+data_path = "../donnee/point_cloud/"
+csv_path = data_path + name + ".csv"
+output_dir = "../../resultat/" + name + "/"
 os.makedirs(output_dir, exist_ok=True)
 
-output_obj = output_dir + csv_name.replace(".csv", "") + "_Delaunay.obj"
+output_obj = output_dir + name + "_Delaunay.obj"
 
 
 # -----------------------------
