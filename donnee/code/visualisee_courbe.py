@@ -14,7 +14,7 @@ data_path = "../curves/"
 points_csv = data_path + data_name + "_points.csv"
 lines_csv  = data_path + data_name + "_lines.csv"
 
-output_dir = "../../resultat/" + data_name + "/"
+output_dir = "../resultat/" + data_name + "/"
 os.makedirs(output_dir, exist_ok=True)
 output_image = output_dir + data_name + "_curves.png"
 
