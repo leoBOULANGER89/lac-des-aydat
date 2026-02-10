@@ -49,3 +49,6 @@
 - **resultat/**  
     Dossiée qui contient les résultats finaux (model 3D, courbe, ...) générés par les scripts.
 
+
+  
+https://arxiv.org/pdf/2601.14997
