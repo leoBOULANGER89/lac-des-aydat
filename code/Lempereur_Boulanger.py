@@ -230,15 +230,15 @@ lines_csv  = "../donnee/curves/Lake_Aydat_lines.csv"
 
 points, segments, depths = read_curves(points_csv, lines_csv)
 curves_by_depth = build_curves(points, segments, depths)
-print(curves_by_depth[-16])
+#print(curves_by_depth[-16])
 
 # --- profondeur de départ ---
 depth0 = -4.0
 curve0 = curves_by_depth[depth0]
 num_points = len(curve0.coords)
-N = 5  # prendre 1 point sur N pour accélérer
+N = 1  # prendre 1 point sur N pour accélérer
 
-angle_max = np.deg2rad(10)
+angle_max = np.deg2rad(30)
 
 # --- calcul des projections pour points échantillonnés ---
 all_paths = []

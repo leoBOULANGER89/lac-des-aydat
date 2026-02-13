@@ -188,6 +188,8 @@ def plot_curves(points, lines, depths, output_path):
     ax.set_zlabel("Z (profondeur)")
     ax.set_title("Courbes 3D — Marching Squares")
 
+    #ax.view_init(elev=90, azim=0)
+
     plt.savefig(output_path, dpi=300)
     plt.close(fig)
 
