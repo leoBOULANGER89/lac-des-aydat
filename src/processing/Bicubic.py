@@ -1,38 +1,8 @@
 import os
 import csv
 import numpy as np
-from scipy.interpolate import RectBivariateSpline
+from ..io import RAndW
 import matplotlib.pyplot as plt
-
-def read_point_cloud(csv_path):
-    if not os.path.isfile(csv_path):
-        raise FileNotFoundError(f"Fichier introuvable : {csv_path}")
-
-    points = []
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            try:
-                x = float(row["x"])
-                y = float(row["y"])
-                z = float(row["z"])
-                points.append((x, y, z))
-            except KeyError:
-                raise KeyError("Le CSV doit contenir les colonnes x, y, z")
-            except ValueError:
-                raise ValueError("Valeurs numériques invalides dans le CSV")
-
-    if len(points) == 0:
-        raise ValueError("Le fichier CSV du nuage de points est vide")
-
-    return np.array(points)
-
-def save_point_cloud(points, output_csv):
-    with open(output_csv, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["x", "y", "z"])
-        for p in points:
-            writer.writerow(p)
 
 def generate_grid(points, M, N):
     x_min, y_min = np.min(points[:, 0]), np.min(points[:, 1])
@@ -98,7 +68,7 @@ if __name__ == "__main__":
     parser.add_argument("--N", type=int, default=50, help="Nombre de points sur Y")
     args = parser.parse_args()
 
-    points = read_point_cloud(args.input_csv)
+    points = RAndW.read_points(args.input_csv)
     final_points = apply_bicubic_interpolation(points, M=args.M, N=args.N)
-    save_point_cloud(final_points, args.output_csv)
+    RAndW.save_CSV(args.output_csv, final_points)
     print(f"Nuage de points final sauvegardé dans {args.output_csv}")

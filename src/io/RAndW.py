@@ -187,3 +187,96 @@ def save_CSV(OUTPUT_POINTS, points_list, OUTPUT_LINES = None, lines_list=None, s
             writer = csv.writer(f)
             writer.writerow(["id", "ix", "iy", "depth"])
             writer.writerows(lines_list)
+
+
+def load_obj_for_dico(path):
+    """
+    Charge un fichier OBJ triangulaire et calcule des informations géométriques
+    utiles pour un traitement ultérieur.
+
+    Cette fonction :
+    - lit les sommets (v) et les faces triangulaires (f) d’un fichier OBJ,
+    - construit les tableaux NumPy des sommets et des faces,
+    - calcule les longueurs des arêtes de chaque triangle,
+    - calcule l’aire de chaque triangle.
+
+    Parameters
+    ----------
+    path : str
+        Chemin vers le fichier OBJ à charger.
+        Le fichier doit contenir des faces triangulaires (3 sommets par face).
+
+    Returns
+    -------
+    dict
+        Dictionnaire contenant :
+        - "vertices" : np.ndarray de shape (N, 3)
+            Coordonnées des sommets.
+        - "faces" : np.ndarray de shape (M, 3)
+            Indices des sommets formant chaque triangle (indexation 0-based).
+        - "edges_lengths" : np.ndarray de shape (M, 3)
+            Longueurs des trois arêtes de chaque triangle.
+        - "areas" : np.ndarray de shape (M,)
+            Aire de chaque triangle.
+
+    Raises
+    ------
+    FileNotFoundError
+        Si le fichier spécifié par `path` n'existe pas.
+    ValueError
+        Si le fichier contient des faces non triangulaires ou mal formatées.
+
+    Notes
+    -----
+    - Les indices des faces dans le format OBJ commencent à 1 ;
+      ils sont convertis en indexation 0-based pour NumPy.
+    - Les normales et coordonnées de texture éventuelles (v/vt/vn)
+      sont ignorées.
+    - Les calculs géométriques utilisent les fonctions de `numpy.linalg`.
+    """
+    vertices = []
+    faces = []
+
+    # --- Lecture du fichier OBJ ---
+    with open(path, 'r') as f:
+        for line in f:
+            if line.startswith('v '):
+                parts = line.strip().split()
+                vertices.append([float(parts[1]),
+                                 float(parts[2]),
+                                 float(parts[3])])
+
+            elif line.startswith('f '):
+                parts = line.strip().split()
+                # Gestion des cas type f v/vt/vn
+                face = []
+                for p in parts[1:4]:  # on suppose triangulaire
+                    idx = p.split('/')[0]
+                    face.append(int(idx) - 1)  # OBJ index start at 1
+                faces.append(face)
+
+    vertices = np.array(vertices)
+    faces = np.array(faces)
+
+    # --- Extraction des sommets des triangles ---
+    v0 = vertices[faces[:, 0]]
+    v1 = vertices[faces[:, 1]]
+    v2 = vertices[faces[:, 2]]
+
+    # --- Longueurs d'arêtes ---
+    e0 = np.linalg.norm(v1 - v0, axis=1)
+    e1 = np.linalg.norm(v2 - v1, axis=1)
+    e2 = np.linalg.norm(v0 - v2, axis=1)
+
+    edges_lengths = np.vstack((e0, e1, e2)).T
+
+    # --- Aire des triangles ---
+    cross = np.cross(v1 - v0, v2 - v0)
+    areas = 0.5 * np.linalg.norm(cross, axis=1)
+
+    return {
+        "vertices": vertices,
+        "faces": faces,
+        "edges_lengths": edges_lengths,
+        "areas": areas
+    }

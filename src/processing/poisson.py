@@ -1,12 +1,13 @@
 import os
 import pandas as pd
 import pyvista as pv
+from ..io import RAndW
 
 # ======================
 # PARAMÈTRES
 # ======================
-input_csv = "../donnee/point_cloud/Lake_Aydat.csv"
-output_dir = "../resultat/Lake_Aydat/"
+input_csv = "data/processed/point_cloud/Lake_Aydat.csv"
+output_dir = "data/final/Lake_Aydat"
 output_obj = os.path.join(output_dir, "Lake_Aydat_Poisson_like.obj")
 
 os.makedirs(output_dir, exist_ok=True)
