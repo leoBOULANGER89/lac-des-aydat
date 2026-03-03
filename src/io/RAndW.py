@@ -1,3 +1,54 @@
+"""
+Module RAndW – Fonctions utilitaires de lecture et d'écriture.
+
+Ce module regroupe un ensemble de fonctions utilisées dans différents scripts du projet (triangulation de Delaunay, analyse de maillages, reconstruction, etc.).
+
+Il centralise les opérations de :
+    - vérification d'existence de fichiers,
+    - lecture de fichiers CSV (points, segments),
+    - écriture de fichiers CSV,
+    - lecture et extraction de données depuis des fichiers OBJ,
+    - calcul de métriques géométriques élémentaires (longueurs d'arêtes, aires de triangles).
+
+Objectif
+--------
+
+Éviter la duplication de code dans les scripts principaux en isolant toutes les opérations d'I/O (Input/Output) et
+les traitements géométriques de base dans un module commun.
+
+Organisation des fonctions
+--------------------------
+
+Lecture :
+    - check_files_exist
+    - read_points
+    - read_curves
+    - load_obj_for_dico
+
+Écriture :
+    - save_CSV
+
+Formats pris en charge
+----------------------
+
+CSV :
+    - Points 3D : colonnes "x", "y", "z"
+    - Segments  : colonnes "id", "ix", "iy", "depth"
+
+OBJ :
+    - Sommets : lignes commençant par "v"
+    - Faces triangulaires : lignes commençant par "f"
+
+Notes
+-----
+
+- Les index du format OBJ (1-based) sont convertis en indexation Python (0-based).
+- Les fonctions ne gèrent pas d'interface utilisateur ; elles sont destinées à être appelées par d'autres scripts.
+- Les fichiers de sortie sont écrasés s'ils existent déjà.
+"""
+
+
+
 import os
 import csv
 import numpy as np
@@ -9,9 +60,29 @@ from collections import defaultdict
 # =============================================================================================================
 def check_files_exist(INPUT_FILES):
     """
-    Vérifie que les fichiers.
-    Lève FileNotFoundError si l'un des fichiers est manquant.
+    Vérifie l'existence d'une liste de fichiers.
+
+    Parameters
+    ----------
+    INPUT_FILES : list of str
+        Liste des chemins de fichiers à vérifier.
+
+    Returns
+    -------
+    None
+        La fonction ne retourne rien si tous les fichiers existent.
+
+    Raises
+    ------
+    FileNotFoundError
+        Si au moins un des fichiers spécifiés n'existe pas.
+
+    Notes
+    -----
+    - La vérification est effectuée via os.path.isfile.
+    - L'exception est levée dès le premier fichier manquant.
     """
+
     for file in INPUT_FILES:
         if not os.path.isfile(file):
             raise FileNotFoundError(f"Le fichier image n'existe pas : {file}")
@@ -26,30 +97,43 @@ def check_files_exist(INPUT_FILES):
 # ------------------------
 def read_curves(INPUT_CSV_POINTS, INPUT_CSV_LINES):
     """
-    Lit les fichiers CSV de points et de segments de courbes de niveau,
-    et retourne les courbes regroupées par ID. Les segments avec le même ID,
-    même s'ils ne sont pas contigus dans le CSV, sont fusionnés dans la même liste.
-    Les segments avec ID = -1 (non fermés ou isolés) sont placés à la fin.
+    Lit un fichier de points 3D et un fichier de segments associés.
+
+    Cette fonction :
+        1. Charge les points 3D depuis un CSV,
+        2. Regroupe les segments par identifiant de courbe,
+        3. Associe une profondeur (depth) à chaque courbe.
 
     Parameters
     ----------
     INPUT_CSV_POINTS : str
-        Chemin vers le CSV contenant les points (x, y, depth).
+        Chemin vers le fichier CSV contenant les points (x, y, z).
     INPUT_CSV_LINES : str
-        Chemin vers le CSV contenant les segments (id, ix, iy, depth).
+        Chemin vers le fichier CSV contenant les segments sous la forme : (id, ix, iy, depth).
 
     Returns
     -------
-    pts : np.ndarray of shape (N, 3)
-        Tableau des points [x, y, depth].
-    curves : list of list of tuple
-        Liste des courbes, chaque courbe est une liste de segments [(i0, i1), ...].
-        L’index dans la liste correspond à l’ID de la courbe.
-        Les segments avec id = -1 sont regroupés dans `curves[-1]`.
-    depths : list of float
-        Liste des profondeurs correspondantes à chaque courbe.
-        `depths[i]` correspond à `curves[i]`.
+    points : np.ndarray
+        Tableau de shape (N, 3) contenant les coordonnées des points.
+    curves : list of list of tuple(int, int)
+        Liste indexée par ID contenant les segments (i0, i1).
+        L'indice -1 regroupe les segments ayant un ID négatif.
+    depths : list of float or None
+        Liste des profondeurs associées à chaque courbe.
+
+    Raises
+    ------
+    ValueError
+        - Si le fichier de points est vide.
+        - Si le fichier de segments est vide.
+
+    Notes
+    -----
+    - Le header des fichiers CSV est ignoré.
+    - Les indices de segments correspondent aux indices des points dans le tableau retourné.
+    - Si plusieurs profondeurs sont définies pour un même ID, la dernière valeur lue est conservée.
     """
+    
     # --- Lecture des points ---
     pts = []
     with open(INPUT_CSV_POINTS, newline="", encoding="utf-8") as f:
@@ -100,33 +184,32 @@ def read_curves(INPUT_CSV_POINTS, INPUT_CSV_LINES):
 
 def read_points (INPUT_CSV_POINTS):
     """
-    Lit un fichier CSV contenant des coordonnées 3D et retourne les points sous forme de tableau NumPy.
-
-    Le fichier CSV doit contenir les colonnes : 'x', 'y', 'z'.
-    Les valeurs sont extraites et organisées dans un tableau de forme (N, 3), où N est le nombre de points.
+    Lit un fichier CSV contenant un nuage de points 3D.
 
     Parameters
     ----------
     INPUT_CSV_POINTS : str
-        Chemin vers le fichier CSV contenant le nuage de points.
+        Chemin vers le fichier CSV.
+        Le fichier doit contenir les colonnes : "x", "y", "z".
 
     Returns
     -------
-    numpy.ndarray
-        Tableau de forme (N, 3) contenant les coordonnées des points sous la forme (x, y, z).
+    points : np.ndarray
+        Tableau de shape (N, 3) contenant les coordonnées des points sous forme (x, y, z).
 
     Raises
     ------
-    FileNotFoundError
-        Si le fichier CSV n'existe pas.
     KeyError
-        Si les colonnes 'x', 'y' ou 'z' sont absentes du fichier CSV.
+        Si les colonnes "x", "y" ou "z" sont absentes.
+    pandas.errors.EmptyDataError
+        Si le fichier est vide.
 
     Notes
     -----
-    - Le fichier CSV doit être encodé en UTF-8 pour éviter les problèmes de lecture.
-    - Le type de retour est toujours un tableau NumPy de float64
+    - La lecture est effectuée via pandas.read_csv.
+    - L'ordre des colonnes est explicitement imposé : x, y, z.
     """
+
     data = pd.read_csv(INPUT_CSV_POINTS)
     points = data[["x", "y", "z"]].values
     return points
@@ -136,42 +219,39 @@ def read_points (INPUT_CSV_POINTS):
 # ------------------------
 def save_CSV(OUTPUT_POINTS, points_list, OUTPUT_LINES = None, lines_list=None, save_lines=False):
     """
-    Sauvegarde des points et, optionnellement, des segments des courbes de niveau dans des fichiers CSV.
-
-    Cette fonction écrit :
-    - un fichier CSV contenant les points [x, y, z].
-    - un fichier CSV contenant les segments [id, ix, iy, depth] si save_lines=True.
+    Sauvegarde des points 3D (et optionnellement des segments) au format CSV.
 
     Parameters
     ----------
     OUTPUT_POINTS : str
-        Chemin du fichier CSV où seront enregistrés les points.
-    points_list : list of list
-        Liste des points sous la forme [x, y, z].
-    OUTPUT_LINES : str or None, optional
-        Chemin du fichier CSV où seront enregistrés les segments.
-        Obligatoire si save_lines=True.
-    lines_list : list of list or None, optional
-        Liste des segments sous la forme [id, ix, iy, depth].
-        Ignorée si save_lines=False.
-    save_lines : bool, optional
-        Indique si les segments doivent être sauvegardés.
-        Par défaut False.
-
-    Raises
-    ------
-    ValueError
-        Si save_lines=True mais que OUTPUT_LINES ou lines_list n'est pas fourni.
+        Chemin du fichier CSV de sortie pour les points.
+    points_list : iterable
+        Liste ou tableau contenant les points sous forme (x, y, z).
+    OUTPUT_LINES : str, optional
+        Chemin du fichier CSV de sortie pour les segments.
+    lines_list : iterable, optional
+        Liste des segments sous forme (id, ix, iy, depth).
+    save_lines : bool, default=False
+        Si True, les segments sont également sauvegardés.
 
     Returns
     -------
     None
+        Génère un ou deux fichiers CSV selon la configuration.
+
+    Raises
+    ------
+    ValueError
+        Si save_lines=True mais que OUTPUT_LINES ou lines_list ne sont pas fournis.
 
     Notes
     -----
-    - Les fichiers CSV générés contiennent des en-têtes explicites.
-    - Les points et les segments sont écrits en UTF-8
+    - Les en-têtes écrits sont :
+        Points : ["x", "y", "z"]
+        Lignes : ["id", "ix", "iy", "depth"]
+    - Les fichiers sont écrasés s'ils existent déjà.
     """
+
     # sauvegarde des points
     with open(OUTPUT_POINTS, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -191,49 +271,49 @@ def save_CSV(OUTPUT_POINTS, points_list, OUTPUT_LINES = None, lines_list=None, s
 
 def load_obj_for_dico(path):
     """
-    Charge un fichier OBJ triangulaire et calcule des informations géométriques
-    utiles pour un traitement ultérieur.
+    Charge un fichier OBJ triangulaire et calcule des métriques géométriques.
 
     Cette fonction :
-    - lit les sommets (v) et les faces triangulaires (f) d’un fichier OBJ,
-    - construit les tableaux NumPy des sommets et des faces,
-    - calcule les longueurs des arêtes de chaque triangle,
-    - calcule l’aire de chaque triangle.
+        - extrait les sommets et les faces triangulaires,
+        - calcule les longueurs des arêtes,
+        - calcule l'aire de chaque triangle.
 
     Parameters
     ----------
     path : str
-        Chemin vers le fichier OBJ à charger.
-        Le fichier doit contenir des faces triangulaires (3 sommets par face).
+        Chemin vers le fichier OBJ.
+        Le fichier doit contenir :
+            - des lignes "v x y z" pour les sommets,
+            - des lignes "f i j k" pour les faces triangulaires.
 
     Returns
     -------
     dict
         Dictionnaire contenant :
-        - "vertices" : np.ndarray de shape (N, 3)
-            Coordonnées des sommets.
-        - "faces" : np.ndarray de shape (M, 3)
-            Indices des sommets formant chaque triangle (indexation 0-based).
-        - "edges_lengths" : np.ndarray de shape (M, 3)
-            Longueurs des trois arêtes de chaque triangle.
-        - "areas" : np.ndarray de shape (M,)
-            Aire de chaque triangle.
+            "vertices" : np.ndarray (N, 3)
+                Coordonnées des sommets.
+            "faces" : np.ndarray (M, 3)
+                Indices des triangles (indexation 0).
+            "edges_lengths" : np.ndarray (M, 3)
+                Longueurs des trois arêtes de chaque triangle.
+            "areas" : np.ndarray (M,)
+                Aire de chaque triangle.
 
     Raises
     ------
     FileNotFoundError
-        Si le fichier spécifié par `path` n'existe pas.
-    ValueError
-        Si le fichier contient des faces non triangulaires ou mal formatées.
+        Si le fichier OBJ n'existe pas.
+    IndexError
+        Si le format des faces est incorrect.
 
     Notes
     -----
-    - Les indices des faces dans le format OBJ commencent à 1 ;
-      ils sont convertis en indexation 0-based pour NumPy.
-    - Les normales et coordonnées de texture éventuelles (v/vt/vn)
-      sont ignorées.
-    - Les calculs géométriques utilisent les fonctions de `numpy.linalg`.
+    - Les indices OBJ commencent à 1 ; ils sont convertis en indexation Python (0-based).
+    - Les faces sont supposées triangulaires.
+    - Les longueurs sont calculées via la norme euclidienne.
+    - L'aire est calculée via la norme du produit vectoriel : 0.5 * || (v1 - v0) x (v2 - v0) ||.
     """
+
     vertices = []
     faces = []
 

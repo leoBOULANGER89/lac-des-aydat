@@ -2,33 +2,69 @@
 # -*- coding: utf-8 -*-
 
 """
-Visualisation 3D d'un nuage de points et/ou de courbes bathymétriques.
+Script d'analyse de maillages 3D.
 
-Ce programme permet de :
-- visualiser un nuage de points 3D à partir d'un fichier CSV,
-- visualiser des courbes (issues par exemple de Marching Squares),
-- enregistrer automatiquement les visualisations sous forme d'images.
+Ce module permet de calculer différentes métriques de qualité sur des surfaces triangulées (format .obj) et de générer des histogrammes comparatifs :
 
-Par défaut, les deux visualisations sont produites.
-L'utilisateur peut choisir de ne produire que le nuage de points (--p)
-ou que les courbes (--c).
+    - aspect ratio des triangles,
+    - mean ratio,
+    - distribution des angles,
+    - condition number des éléments.
 
-Entrées attendues
------------------
-Nuage de points :
-    CSV contenant les colonnes : x, y, z
+Les figures générées sont sauvegardées automatiquement au format PNG.
 
-Courbes :
-    - <name>_points.csv : liste des points 2D
-    - <name>_lines.csv  : indices des segments + profondeur
+Utilisation en ligne de commande
+--------------------------------
 
-Utilisation
------------
-python visualisation.py
-python visualisation.py --name Lake_Aydat
-python visualisation.py --p
-python visualisation.py --c
-python visualisation.py --o ../../resultat/custom/
+Traitement d'un seul fichier :
+
+    python script.py --name chemin/vers/maillage.obj
+
+Traitement de tous les fichiers .obj d'un dossier :
+
+    python script.py --all chemin/vers/dossier/
+
+Optionnel :
+
+    --o nom_fichier.png
+        Définit le nom du fichier image de sortie.
+        Par défaut :
+            - <fichier>_mesure_simu.png
+            - <dossier>/<dossier>_mesure_simu.png
+
+Logique des options
+-------------------
+
+- Si aucune option (--name ou --all) n'est fournie :
+       une erreur est levée (fichier ou dossier requis).
+- Si --name est fourni :
+       traitement du fichier unique.
+- Si --all est fourni :
+       traitement de tous les fichiers .obj du dossier.
+
+Organisation des fichiers
+--------------------------
+
+Entrées :
+    - Fichier .obj unique : chemin spécifié via --name
+    - Dossier de fichiers .obj : chemin spécifié via --all
+
+Sortie :
+    - Une figure PNG contenant :
+        - n lignes (une par maillage)
+        - 4 colonnes correspondant aux métriques calculées
+    - La figure est sauvegardée avec une résolution de 300 dpi.
+
+Les dossiers de sortie sont créés automatiquement si nécessaires.
+
+Gestion des erreurs
+-------------------
+
+FileNotFoundError
+    Si un fichier spécifié n'existe pas ou si aucun .obj n'est trouvé.
+
+NotADirectoryError
+    Si le chemin fourni avec --all n'est pas un dossier valide.
 """
 
 import os
@@ -46,7 +82,31 @@ from ..io import RAndW
 # =============================================================================================================
 
 def plot_point_cloud(points, output_path):
-    """Génère et sauvegarde la visualisation du nuage de points."""
+    """
+    Affiche et sauvegarde un nuage de points 3D.
+
+    Parameters
+    ----------
+    points : np.ndarray
+        Tableau de shape (N, 3) contenant les coordonnées des points.
+        Chaque ligne correspond à un point (x, y, z).
+    output_path : str
+        Chemin du fichier image de sortie (ex: ".png", ".jpg", ".pdf").
+
+    Returns
+    -------
+    None
+        La fonction génère une figure 3D représentant le nuage de points,
+        la sauvegarde à l'emplacement "output_path" avec une résolution
+        de 300 dpi, puis ferme la figure.
+
+    Notes
+    -----
+    - La couleur des points est déterminée par leur coordonnée en z.
+    - La colormap utilisée est "viridis".
+    - Les points sont affichés avec un marqueur "x" et une taille réduite (s=1) afin d'améliorer la lisibilité pour de grands nuages.
+    """
+
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection="3d")
 
@@ -64,8 +124,41 @@ def plot_point_cloud(points, output_path):
 
 def plot_curves(pts, curves, depths, output_path):
     """
-    Génère et sauvegarde la visualisation des courbes 3D
-    à partir des données issues de read_curves().
+    Trace et sauvegarde des courbes 3D générées par un algorithme de type Marching Squares.
+
+    Parameters
+    ----------
+    pts : np.ndarray
+        Tableau de shape (N, 3) contenant les coordonnées des points.
+        Les indices référencés dans curves correspondent aux lignes de ce tableau.
+    curves : list of list of tuple(int, int)
+        Liste de courbes. Chaque courbe est une liste de segments, et chaque segment est défini par un tuple (i0, i1) indiquant
+        les indices des deux points dans pts.
+    depths : list of float or None
+        Liste des profondeurs associées à chaque courbe.
+        Si une profondeur vaut None, la courbe correspondante n'est pas tracée.
+    output_path : str
+        Chemin du fichier image de sortie (ex: ".png", ".jpg", ".pdf").
+
+    Raises
+    ------
+    ValueError
+        Si aucune profondeur valide (non None) n'est disponible pour la normalisation des couleurs.
+
+    Returns
+    -------
+    None
+        La fonction génère une figure 3D contenant les courbes,
+        la sauvegarde à l'emplacement output_path avec une résolution de 300 dpi, puis ferme la figure.
+
+    Notes
+    -----
+    - Les courbes sont tracées dans le plan (X, Y) à une altitude Z correspondant à leur profondeur.
+    - La couleur de chaque courbe est déterminée par sa profondeur, normalisée entre la valeur minimale et maximale des profondeurs
+      valides.
+    - La colormap utilisée est "viridis".
+    - Une vue en plan peut être activée en décommentant :
+          ax.view_init(elev=90, azim=0)
     """
 
     # Filtrer les profondeurs valides
@@ -117,37 +210,39 @@ def plot_curves(pts, curves, depths, output_path):
 # =============================================================================================================
 # MAIN
 # =============================================================================================================
-def main_visualise(
-    name="Lake_Aydat",
-    show_points=True,
-    show_curves=True
-):
+def main_visualise( name="Lake_Aydat", show_points=True, show_curves=True):
     """
-    Génère les visualisations 3D du nuage de points et/ou des courbes
-    sans affichage, sans sauvegarde, et retourne les figures matplotlib.
+    Visualise un nuage de points et/ou des courbes 3D associées à un jeu de données donné.
 
     Parameters
     ----------
     name : str, optional
-        Nom du jeu de données (sans extension).
+        Nom du jeu de données (sans extension). Ce nom est utilisé
+        pour construire automatiquement les chemins d'accès :
+            - ../point_cloud/{name}.csv
+            - ../curves/{name}_points.csv
+            - ../curves/{name}_lines.csv
+        Par défaut : "Lake_Aydat".
     show_points : bool, optional
-        Si True, génère la figure du nuage de points.
+        Si True, affiche le nuage de points 3D. Par défaut True.
     show_curves : bool, optional
-        Si True, génère la figure des courbes.
+        Si True, affiche les courbes 3D issues du Marching Squares.
+        Par défaut True.
 
     Returns
     -------
     figures : dict
-        Dictionnaire contenant les figures matplotlib :
-        - "points" : matplotlib.figure.Figure ou None
-        - "curves" : matplotlib.figure.Figure ou None
+        Dictionnaire contenant les figures matplotlib générées :
+            - "points" : figure du nuage de points (ou None)
+            - "curves" : figure des courbes 3D (ou None)
 
-    Raises
-    ------
-    FileNotFoundError
-        Si un fichier requis est introuvable.
-    ValueError
-        Si les données sont invalides ou vides.
+    Notes
+    -----
+    - Le nuage de points est coloré selon la coordonnée Z (profondeur) avec la colormap "viridis".
+    - Les courbes sont tracées dans le plan (X, Y) à une altitude Z correspondant à leur profondeur.
+    - Les couleurs des courbes sont normalisées entre la profondeur minimale et maximale.
+    - Les figures ne sont pas sauvegardées automatiquement ; elles sont retournées afin de permettre une manipulation ou une
+      sauvegarde ultérieure.
     """
 
     figures = {

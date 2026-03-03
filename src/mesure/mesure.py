@@ -1,3 +1,56 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Script d'analyse de maillages 3D.
+
+Ce module permet de calculer différentes métriques de qualité sur des surfaces triangulées (format .obj) et de générer des histogrammes
+comparatifs :
+
+    - aspect ratio des triangles,
+    - mean ratio,
+    - distribution des angles,
+    - condition number des éléments.
+
+Utilisation en ligne de commande
+---------------------------------
+
+Traitement d'un seul fichier :
+
+    python script.py --name chemin/vers/maillage.obj
+
+Traitement de tous les fichiers .obj d'un dossier :
+
+    python script.py --all chemin/vers/dossier/
+
+Optionnel :
+    --o nom_fichier.png
+        Définit le nom du fichier image de sortie.
+        Par défaut :
+            - <fichier>_mesure_simu.png
+            - <dossier>/<dossier>_mesure_simu.png
+
+Sortie
+------
+
+Une figure PNG contenant :
+    - n lignes (une par maillage)
+    - 4 colonnes correspondant aux métriques calculées
+
+La figure est sauvegardée avec une résolution de 300 dpi.
+
+Raises
+------
+
+FileNotFoundError
+    Si un fichier spécifié n'existe pas ou si aucun .obj n'est trouvé.
+
+NotADirectoryError
+    Si le chemin fourni avec --all n'est pas un dossier valide.
+"""
+
+
+
 from ..io import RAndW
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,38 +59,36 @@ from scipy.linalg import svd, LinAlgError
 
 
 
-def plot_histogram_1d(ax, data, xlabel="Valeurs", ylabel="Fréquence", bins=30, density=False):
+def plot_histogram(ax, data, xlabel="Valeurs", ylabel="Fréquence", bins=30, density=False):
     """
-    Affiche l'histogramme d'un tableau NumPy 1D (1xN ou (N,)).
+    Trace un histogramme 1D à partir d'un tableau de données.
 
     Parameters
     ----------
-    data : np.ndarray
-        Tableau NumPy de forme (N,) ou (1, N).
-    bins : int, optional
-        Nombre de classes (bins) de l’histogramme.
-        Par défaut 30.
-    title : str, optional
-        Titre du graphique.
+    ax : matplotlib.axes.Axes
+        Objet Axes sur lequel tracer l'histogramme.
+    data : array-like
+        Données à représenter. Doit être de forme (N,) ou (1, N).
     xlabel : str, optional
-        Label de l’axe des abscisses.
+        Label de l'axe des abscisses. Par défaut "Valeurs".
     ylabel : str, optional
-        Label de l’axe des ordonnées.
+        Label de l'axe des ordonnées. Par défaut "Fréquence".
+    bins : int, optional
+        Nombre de classes (bins) pour l'histogramme. Par défaut 30.
     density : bool, optional
-        Si True, normalise l’histogramme (aire totale = 1).
-        Par défaut False.
+        Si True, normalise l'histogramme pour représenter une densité
+        de probabilité. Par défaut False.
 
     Raises
     ------
     ValueError
-        Si le tableau n’est pas unidimensionnel.
+        Si "data" n'est pas de dimension (N,) ou (1, N).
 
     Returns
     -------
     None
-        Affiche simplement la figure.
+        La fonction modifie directement l'objet "ax" en y traçant l'histogramme.
     """
-
     data = np.asarray(data)
 
     # Accepte (1, N) ou (N,)
@@ -54,8 +105,27 @@ def plot_histogram_1d(ax, data, xlabel="Valeurs", ylabel="Fréquence", bins=30, 
 
 def compute_triangle_angles(mesh):
     """
-    Retourne une matrice (M,1)
-    contenant les 3 angles (en radians) de chaque triangle.
+    Calcule les angles (en degrés) de chaque triangle du maillage à partir des longueurs de ses arêtes.
+
+    Parameters
+    ----------
+    mesh : dict
+        Dictionnaire contenant au minimum :
+        - "edges_lengths" : np.ndarray de shape (M, 3)
+          Longueurs des trois arêtes pour chacun des M triangles.
+          Chaque ligne correspond à un triangle et contient (a, b, c).
+
+    Returns
+    -------
+    angles : np.ndarray
+        Tableau 1D contenant les angles de tous les triangles en degrés.
+        La taille est (3*M,), correspondant aux angles A, B et C concaténés pour chaque triangle.
+
+    Notes
+    -----
+    Les angles sont calculés via la loi des cosinus.
+    Un clamp numérique avec np.clip est appliqué sur les cosinus afin d'éviter les erreurs numériques (valeurs légèrement hors [-1, 1])
+    pouvant produire des NaN lors du calcul de arccos.
     """
 
     L = mesh["edges_lengths"]
@@ -90,7 +160,7 @@ def compute_element_condition_number(mesh):
     Parameters
     ----------
     mesh : dict
-        Dictionnaire renvoyé par `load_obj_for_dico`, contenant au minimum :
+        Dictionnaire renvoyé par "load_obj_for_dico", contenant au minimum :
         - "vertices" : np.ndarray de shape (N, 3)
         - "faces" : np.ndarray de shape (M, 3)
 
@@ -131,36 +201,38 @@ def compute_element_condition_number(mesh):
 
 def compare_mesure_simu (lst_path, output_path):
     """
-    Compare plusieurs fichiers de maillage et affiche des histogrammes récapitulatifs.
+    Compare plusieurs maillages en visualisant différentes métriques géométriques sous forme d'histogrammes.
 
-    Pour chaque fichier de maillage dans `lst_path`, la fonction :
-    1. Charge le maillage via `RAndW.load_obj_for_dico`.
-    2. Calcule et affiche quatre histogrammes sur une ligne de subplots :
-       - Aspect ratio des éléments (avec ligne verticale de référence à x=5)
-       - Mean ratio des éléments
-       - Angles des triangles (avec lignes verticales de référence à x=20, 25, 120, 150)
-       - Condition number des éléments (ligne verticale à x=10, le maximum exclu)
-    3. Ajoute des titres de colonnes et des titres de lignes centrés verticalement avec taille de police adaptative.
-    4. Ajuste les marges et espacements pour optimiser l'utilisation de l'espace.
-    5. Sauvegarde la figure finale au chemin `output_path` en haute résolution (300 dpi).
+    Pour chaque maillage fourni, la fonction calcule et affiche :
+        - l'aspect ratio des triangles,
+        - le mean ratio,
+        - les angles des triangles (en degrés),
+        - le condition number des éléments K(a).
+
+    Les résultats sont organisés sous forme d'une figure comportant n lignes (une par maillage) et 4 colonnes (une par métrique).
 
     Parameters
     ----------
     lst_path : list of str
-        Liste des chemins vers les fichiers de maillage à traiter.
+        Liste des chemins vers les fichiers maillage (format compatible avec "RAndW.load_obj_for_dico").
     output_path : str
-        Chemin complet pour sauvegarder la figure générée (ex. .png, .pdf).
-
-    Raises
-    ------
-    Any exception provenant du chargement des fichiers de maillage ou du calcul des histogrammes
-    peut être propagée (ex. erreurs de lecture de fichier ou de forme de données).
+        Chemin du fichier image de sortie (ex: ".png", ".jpg", ".pdf").
 
     Returns
     -------
     None
-        La fonction ne retourne rien ; elle sauvegarde simplement la figure finale.
+        La fonction sauvegarde directement la figure à l'emplacement "output_path" avec une résolution de 300 dpi, puis ferme la figure.
+
+    Notes
+    -----
+    - L'aspect ratio est défini comme :     max(arêtes) / min(arêtes) pour chaque triangle.
+    - Le mean ratio est calculé via :       (4 * sqrt(3) * aire) / somme(des longueurs^2)
+    - Les angles sont calculés à l'aide de "compute_triangle_angles".
+    - Le condition number K(a) est calculé via "compute_element_condition_number".
+    - Certaines lignes verticales de référence sont ajoutées pour visualiser des seuils de qualité (ex: angles critiques, aspect ratio élevé, etc.).
+    - La taille de la police des titres de lignes est automatiquement ajustée en fonction du nombre de maillages comparés.
     """
+    
     n = len(lst_path)
 
     fig, axs = plt.subplots(n, 4, figsize=(16, 3*n), squeeze=False)
@@ -182,15 +254,15 @@ def compare_mesure_simu (lst_path, output_path):
 
 
         aspect_ratio = np.max(mesh["edges_lengths"], axis=1) / np.min(mesh["edges_lengths"], axis=1)
-        plot_histogram_1d(axs[i,0], aspect_ratio, "valeurs", "nombre", 30, True)
+        plot_histogram(axs[i,0], aspect_ratio, "valeurs", "nombre", 30, True)
         axs[i,0].axvline(x=5, color='red', linestyle='--', linewidth=2)
 
         l2_sum = np.sum(mesh["edges_lengths"]**2, axis=1)
         mean_ratio = (4 * np.sqrt(3) * mesh["areas"]) / l2_sum
-        plot_histogram_1d(axs[i,1], mean_ratio, "valeurs", "nombre", 30)
+        plot_histogram(axs[i,1], mean_ratio, "valeurs", "nombre", 30)
 
         angles = compute_triangle_angles(mesh)
-        plot_histogram_1d(axs[i,2], angles, "valeurs", "nombre", 30)
+        plot_histogram(axs[i,2], angles, "valeurs", "nombre", 30)
         axs[i,2].axvline(x=20, color='red', linestyle='--', linewidth=2)
         axs[i,2].axvline(x=25, color='green', linestyle='--', linewidth=2)
         axs[i,2].axvline(x=120, color='green', linestyle='--', linewidth=2)
@@ -206,7 +278,7 @@ def compare_mesure_simu (lst_path, output_path):
         Ka = compute_element_condition_number(mesh)
         max_val = np.max(Ka)
         Ka = Ka[Ka != max_val]
-        plot_histogram_1d(axs[i,3], Ka, "valeurs", "nombre", 30)
+        plot_histogram(axs[i,3], Ka, "valeurs", "nombre", 30)
         axs[i,3].axvline(x=10, color='red', linestyle='--', linewidth=2)
 
 

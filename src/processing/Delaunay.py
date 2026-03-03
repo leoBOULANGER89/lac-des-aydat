@@ -2,57 +2,81 @@
 # -*- coding: utf-8 -*-
 
 """
-Génération d'une surface triangulée par Delaunay à partir d'un nuage de points 3D.
+Script de triangulation de Delaunay à partir d'un nuage de points CSV.
 
-Ce programme permet de :
-- lire un nuage de points 3D depuis un fichier CSV,
-- appliquer une triangulation de Delaunay sur les coordonnées (x, y),
-- générer une surface triangulaire,
-- exporter cette surface au format OBJ.
+Ce module permet de générer une surface triangulée au format OBJ à partir d'un nuage de points 3D (x, y, z). La triangulation est
+effectuée sur la projection plane (x, y) à l'aide de l'algorithme de Delaunay, tandis que les coordonnées z originales sont conservées
+dans le fichier final.
 
-Le fichier OBJ généré contient :
-- les sommets 3D (v x y z),
-- les faces triangulaires (f i j k), compatibles avec les logiciels 3D
-  tels que Blender, MeshLab ou CloudCompare.
+Le script :
+    - lit un fichier CSV contenant des points 3D,
+    - applique une triangulation de Delaunay en 2D,
+    - génère un fichier OBJ contenant les sommets et les faces triangulaires.
 
-Le fichier de sortie peut être généré automatiquement ou spécifié
-explicitement par l'utilisateur.
+Utilisation en ligne de commande
+--------------------------------
 
-Entrées attendues
------------------
-Nuage de points :
-    CSV contenant exactement les colonnes :
-        - x : coordonnée X
-        - y : coordonnée Y
-        - z : coordonnée Z
+Traitement d'un fichier CSV (nom sans extension) :
 
-Sorties générées
-----------------
-Surface triangulée :
-    Fichier OBJ contenant la triangulation de Delaunay.
+    python script.py --name Lake_Aydat
 
-Par défaut :
-    ../resultat/<name>/<name>_Delaunay.obj
+Optionnel :
 
-Utilisation
------------
-python delaunay.py
-python delaunay.py --name Lake_Aydat
-python delaunay.py --name Lake_Aydat --o ./surface.obj
+    --o chemin/vers/fichier.obj
+        Définit le chemin du fichier OBJ de sortie.
+        Si non fourni, le fichier est généré automatiquement dans :
+            data/final/<name>/<name>_Delaunay.obj
 
-Options
--------
---name
-    Nom du fichier CSV à traiter (sans extension).
---o, --output
-    Chemin du fichier OBJ de sortie.
+Valeur par défaut :
+
+    --name Lake_Aydat
+
+Logique des options
+-------------------
+
+- Le paramètre --name détermine le fichier :
+      data/processed/point_cloud/<name>.csv
+- Si --o est fourni :
+      le fichier OBJ est écrit à l'emplacement spécifié.
+- Sinon :
+      le dossier de sortie est créé automatiquement et
+      le fichier est nommé <name>_Delaunay.obj.
+
+Organisation des fichiers
+--------------------------
+
+Entrée :
+    - Fichier CSV contenant exactement 3 colonnes : x, y, z
+
+Sortie :
+    - Fichier OBJ contenant :
+        - les sommets (v x y z)
+        - les faces triangulaires (f i j k)
+
+Gestion des erreurs
+-------------------
+
+FileNotFoundError
+    Si le fichier CSV spécifié n'existe pas.
+
+ValueError
+    - Si le CSV ne contient pas exactement 3 colonnes.
+    - Si le nombre de points est inférieur à 3.
+
+pandas.errors.EmptyDataError
+    Si le fichier CSV est vide.
+
+RuntimeError
+    Si la triangulation de Delaunay échoue.
+
+Exception
+    Toute erreur inattendue est interceptée et affichée avec son type pour faciliter le débogage.
 
 Notes
 -----
-- La triangulation de Delaunay est effectuée uniquement dans le plan (x, y).
-- Les coordonnées z sont conservées pour la géométrie 3D finale.
-- Un minimum de 3 points est requis pour appliquer l'algorithme.
-- Les dossiers de sortie sont créés automatiquement s'ils n'existent pas.
+
+- La triangulation est réalisée via scipy.spatial.Delaunay.
+- Les dossiers de sortie sont créés automatiquement si nécessaires.
 """
 
 
@@ -66,33 +90,36 @@ from ..io import RAndW
 # =============================================================================================================
 def determine_param(name, output_override=None):
     """
-    Détermine les chemins des fichiers d'entrée (CSV) et de sortie (OBJ).
+    Détermine les chemins d'entrée et de sortie pour la triangulation de Delaunay.
 
-    Le fichier d'entrée est construit à partir du nom du jeu de données.
-    Le fichier de sortie peut soit être généré automatiquement, soit être
-    explicitement fourni via un chemin personnalisé.
+    Cette fonction construit :
+        - le chemin vers le fichier CSV contenant le nuage de points,
+        - le chemin vers le fichier OBJ de sortie contenant le maillage généré.
+
+    Elle crée automatiquement les dossiers de sortie si nécessaire.
 
     Parameters
     ----------
     name : str
-        Nom du fichier CSV à traiter (sans l'extension `.csv`).
-    output_override : str or None, optional
-        Chemin du fichier OBJ de sortie.
-        Si None, le fichier OBJ est généré automatiquement dans
-        `../resultat/<name>/<name>_Delaunay.obj`.
+        Nom du jeu de données (sans extension).
+        Le fichier d'entrée est supposé se trouver dans : data/processed/point_cloud/<name>.csv
+    output_override : str, optional
+        Chemin complet personnalisé pour le fichier OBJ de sortie.
+        Si fourni, ce chemin est utilisé tel quel.
+        Si None (par défaut), le fichier est généré dans data/final/<name>/<name>_Delaunay.obj
 
     Returns
     -------
     INPUT_CSV : str
-        Chemin vers le fichier CSV contenant le nuage de points.
+        Chemin vers le fichier CSV d'entrée contenant le nuage de points.
     OUTPUT_OBJ : str
-        Chemin vers le fichier OBJ de sortie.
+        Chemin vers le fichier OBJ de sortie destiné à contenir le maillage triangulé (Delaunay).
 
     Notes
     -----
-    - Les répertoires nécessaires à l'écriture du fichier OBJ sont créés
-      automatiquement s'ils n'existent pas.
-    - Le fichier d'entrée CSV n'est jamais modifié par ce paramétrage.
+    - Les dossiers de sortie sont créés automatiquement via os.makedirs(..., exist_ok=True).
+    - Aucun contrôle n'est effectué sur l'existence réelle du fichier CSV.
+    - La fonction ne lit ni n'écrit de données ; elle ne fait que déterminer et préparer les chemins.
     """
 
     data_path = "data/processed/point_cloud/"
@@ -116,21 +143,30 @@ def determine_param(name, output_override=None):
 # =============================================================================================================
 def applique_Delaunay(points):
     """
-    Applique une triangulation de Delaunay sur un ensemble de points 3D.
+    Applique une triangulation de Delaunay sur un nuage de points 3D.
 
-    La triangulation est effectuée uniquement sur les coordonnées (x, y).
+    La triangulation est effectuée uniquement sur les coordonnées (x, y), c'est-à-dire sur la projection plane du nuage de points.
+    Les coordonnées z ne sont pas utilisées dans le calcul de la triangulation.
 
     Parameters
     ----------
-    points : numpy.ndarray
-        Tableau de points 3D de forme (N, 3).
+    points : np.ndarray
+        Tableau de shape (N, 3) contenant les coordonnées des points.
+        Chaque ligne correspond à un point (x, y, z).
 
     Returns
     -------
     tri : scipy.spatial.Delaunay
-        Objet Delaunay contenant les triangles (simplices).
+        Objet de triangulation retourné par scipy.spatial.Delaunay.
+        L'attribut simplices contient les indices des triangles générés.
+
+    Notes
+    -----
+    - La triangulation est réalisée à l'aide de la classe scipy.spatial.Delaunay.
+    - Seules les deux premières colonnes (x, y) sont utilisées.
+    - La fonction ne modifie pas le tableau points.
     """
-        
+
     tri = Delaunay(points[:, :2])
     return tri
 
@@ -142,16 +178,29 @@ def save_obj_Delaunay (OUTPUT_OBJ, tri):
     """
     Sauvegarde une triangulation de Delaunay au format OBJ.
 
-    Le fichier OBJ contient :
-    - les sommets (v x y z)
-    - les faces triangulaires (f i j k)
+    Cette fonction écrit :
+        - les sommets du nuage de points sous la forme "v x y z",
+        - les faces triangulaires sous la forme "f i j k".
 
     Parameters
     ----------
     OUTPUT_OBJ : str
         Chemin du fichier OBJ de sortie.
     tri : scipy.spatial.Delaunay
-        Triangulation de Delaunay à exporter.
+        Objet de triangulation contenant les triangles dans l'attribut simplices.
+
+    Returns
+    -------
+    None
+        Un fichier .obj est généré à l'emplacement spécifié.
+
+    Notes
+    -----
+    - Les indices des faces dans le format OBJ commencent à 1, contrairement aux indices Python qui commencent à 0.
+      Un décalage de +1 est donc appliqué.
+    - Les sommets sont supposés provenir du nuage de points utilisé pour générer la triangulation.
+    - Le fichier est ouvert en mode écriture ("w") et sera écrasé s'il existe déjà.
+    - La variable points doit être définie dans le scope appelant (non passée explicitement en paramètre).
     """
 
     with open(OUTPUT_OBJ, "w") as f:
@@ -171,18 +220,47 @@ def save_obj_Delaunay (OUTPUT_OBJ, tri):
 # ======================
 def Delaunay_main(INPUT_CSV, OUTPUT_OBJ):
     """
-    Fonction principale appliquant une triangulation de Delaunay
-    à un nuage de points issu d'un fichier CSV.
+    Fonction principale du pipeline de triangulation de Delaunay.
+
+    Cette fonction :
+        1. Lit un nuage de points 3D depuis un fichier CSV,
+        2. Applique une triangulation de Delaunay sur la projection (x, y),
+        3. Sauvegarde le maillage triangulé au format OBJ.
 
     Parameters
     ----------
-    name : str
-        Nom du fichier CSV (sans extension).
-    
+    INPUT_CSV : str
+        Chemin vers le fichier CSV contenant le nuage de points.
+        Le fichier doit contenir des points 3D sous forme (x, y, z).
+    OUTPUT_OBJ : str
+        Chemin du fichier OBJ de sortie dans lequel sera écrit
+        le maillage triangulé.
+
     Returns
     -------
     None
+        Génère un fichier OBJ contenant :
+            - les sommets du nuage de points,
+            - les faces issues de la triangulation de Delaunay.
+
+    Notes
+    -----
+    - La lecture des points est effectuée via la fonction RAndW.read_points.
+    - La triangulation est réalisée à l'aide de applique_Delaunay, qui utilise scipy.spatial.Delaunay sur les coordonnées (x, y).
+    - L'écriture du fichier OBJ est effectuée par save_obj_Delaunay.
+    - La triangulation est calculée en 2D (projection plane), mais le fichier OBJ conserve les coordonnées 3D originales.
+    - Le fichier de sortie est écrasé s'il existe déjà.
+
+    Raises
+    ------
+    FileNotFoundError
+        Si le fichier INPUT_CSV n'existe pas.
+    ValueError
+        Si les données lues ne sont pas au format attendu (par exemple shape incompatible).
+    IOError
+        En cas d'erreur lors de l'écriture du fichier OBJ.
     """
+
     points = RAndW.read_points(INPUT_CSV)
     
     #application de Delaunay
