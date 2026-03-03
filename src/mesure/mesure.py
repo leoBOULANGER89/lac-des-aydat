@@ -59,7 +59,7 @@ from scipy.linalg import svd, LinAlgError
 
 
 
-def plot_histogram(ax, data, xlabel="Valeurs", ylabel="Fréquence", bins=30, density=False):
+def plot_histogram(ax, data, xlabel="Valeurs", ylabel="nombre", bins=30):
     """
     Trace un histogramme 1D à partir d'un tableau de données.
 
@@ -97,7 +97,9 @@ def plot_histogram(ax, data, xlabel="Valeurs", ylabel="Fréquence", bins=30, den
     elif data.ndim != 1:
         raise ValueError("Le tableau doit être de forme (N,) ou (1, N).")
 
-    ax.hist(data, bins=bins, density=density, edgecolor='black')
+    # Histogramme en fréquence (comptage)
+    ax.hist(data, bins=bins, density=False, edgecolor='black')
+
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.grid(alpha=0.3)
@@ -254,7 +256,7 @@ def compare_mesure_simu (lst_path, output_path):
 
 
         aspect_ratio = np.max(mesh["edges_lengths"], axis=1) / np.min(mesh["edges_lengths"], axis=1)
-        plot_histogram(axs[i,0], aspect_ratio, "valeurs", "nombre", 30, True)
+        plot_histogram(axs[i,0], aspect_ratio, "valeurs", "nombre", 30)
         axs[i,0].axvline(x=5, color='red', linestyle='--', linewidth=2)
 
         l2_sum = np.sum(mesh["edges_lengths"]**2, axis=1)
@@ -280,6 +282,7 @@ def compare_mesure_simu (lst_path, output_path):
         Ka = Ka[Ka != max_val]
         plot_histogram(axs[i,3], Ka, "valeurs", "nombre", 30)
         axs[i,3].axvline(x=10, color='red', linestyle='--', linewidth=2)
+
 
 
 
