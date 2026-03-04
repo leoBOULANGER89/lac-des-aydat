@@ -236,8 +236,9 @@ def compare_mesure_simu (lst_path, output_path):
     """
     
     n = len(lst_path)
+    col_titles = ["aspect ratio", "mean ratio", "K(a)", "angles", "aires"]
 
-    fig, axs = plt.subplots(n, 4, figsize=(16, 3*n), squeeze=False)
+    fig, axs = plt.subplots(n, len(col_titles), figsize=(16, 3*n), squeeze=False)
    
     # --- Ajuster les marges ---
     plt.subplots_adjust(
@@ -245,8 +246,8 @@ def compare_mesure_simu (lst_path, output_path):
         right=0.97,  # espace droit
         top=0.85,    # espace haut
         bottom=0.10, # espace bas
-        hspace=0.4,  # espace vertical entre subplots
-        wspace=0.25  # espace horizontal entre subplots
+        hspace=0.3,  # espace vertical entre subplots
+        wspace=0.35  # espace horizontal entre subplots
     )
 
 
@@ -254,42 +255,53 @@ def compare_mesure_simu (lst_path, output_path):
     for i in range(n):
         mesh = RAndW.load_obj_for_dico(lst_path[i])
 
-
+        # aspect_ratio
+        ax = axs[i,0]
         aspect_ratio = np.max(mesh["edges_lengths"], axis=1) / np.min(mesh["edges_lengths"], axis=1)
-        plot_histogram(axs[i,0], aspect_ratio, "valeurs", "nombre", 30)
-        axs[i,0].axvline(x=5, color='red', linestyle='--', linewidth=2)
+        plot_histogram(ax, aspect_ratio, "valeurs", "nombre")
+        ax.axvline(x=5, color='red', linestyle='--', linewidth=2)
 
+
+        # mean_ratio
+        ax = axs[i,1]
         l2_sum = np.sum(mesh["edges_lengths"]**2, axis=1)
         mean_ratio = (4 * np.sqrt(3) * mesh["areas"]) / l2_sum
-        plot_histogram(axs[i,1], mean_ratio, "valeurs", "nombre", 30)
+        plot_histogram(ax, mean_ratio, "valeurs", "nombre")
 
-        angles = compute_triangle_angles(mesh)
-        plot_histogram(axs[i,2], angles, "valeurs", "nombre", 30)
-        axs[i,2].axvline(x=20, color='red', linestyle='--', linewidth=2)
-        axs[i,2].axvline(x=25, color='green', linestyle='--', linewidth=2)
-        axs[i,2].axvline(x=120, color='green', linestyle='--', linewidth=2)
-        axs[i,2].axvline(x=150, color='red', linestyle='--', linewidth=2)
 
+        # Ka
+        ax = axs[i,2]
         try:
             Ka = compute_element_condition_number(mesh)
         except LinAlgError:
             print(f"Warning: SVD did not converge pour {lst_path[i]}. Valeurs ignorées.")
             Ka = np.array([])  # ou une valeur par défaut
 
-
-        Ka = compute_element_condition_number(mesh)
         max_val = np.max(Ka)
         Ka = Ka[Ka != max_val]
-        plot_histogram(axs[i,3], Ka, "valeurs", "nombre", 30)
-        axs[i,3].axvline(x=10, color='red', linestyle='--', linewidth=2)
+        plot_histogram(ax, Ka, "valeurs", "nombre")
+        ax.axvline(x=10, color='red', linestyle='--', linewidth=2)
+
+
+        # angles
+        ax = axs[i,3]
+        angles = compute_triangle_angles(mesh)
+        plot_histogram(ax, angles, "valeurs", "nombre")
+        ax.axvline(x=20, color='red', linestyle='--', linewidth=2)
+        ax.axvline(x=25, color='green', linestyle='--', linewidth=2)
+        ax.axvline(x=120, color='green', linestyle='--', linewidth=2)
+        ax.axvline(x=150, color='red', linestyle='--', linewidth=2)
+
+
+        # aires
+        ax = axs[i,4]
+        plot_histogram(ax, mesh["areas"], "valeurs", "nombre")
 
 
 
 
     # --- Titres des colonnes ---
-    col_titles = ["aspect ratio", "mean ratio", "angles", "K(a)"]
-
-    for j in range(4):
+    for j in range(len(col_titles)):
         axs[0, j].set_title(col_titles[j], fontsize=12, pad=15)
 
     # --- Titres des lignes ---

@@ -200,7 +200,7 @@ def applique_CDT(points_xy, segments):
 
         - "p"  : respect des segments (PSLG)
         - "q30": angle minimal de 30 degrés
-        - "a1000": aire maximale des triangles fixée à 1000
+        - "a500": aire maximale des triangles fixée à 500
         - "D"  : raffinement de Delaunay
 
     Ces paramètres permettent d'améliorer la qualité du maillage en contrôlant les angles et la taille des éléments.
@@ -210,9 +210,9 @@ def applique_CDT(points_xy, segments):
 
     # p  : PSLG (respect des segments)
     # q30: angle minimal 30°
-    # a1000 : aire maximale
+    # a500 : aire maximale
     # D  : Delaunay refinement
-    B = tr.triangulate(A, "pq30a1000D")
+    B = tr.triangulate(A, "pq30a500D")
 
     return B["vertices"], B["triangles"]
 
