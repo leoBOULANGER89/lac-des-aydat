@@ -1,54 +1,85 @@
-# lac-des-aydat
+# Reconstruction 3D d'une surface avec une carte des courbe de niveaux.
 
 ## Description du projet
     Projet effectuer dans le cadre de nos études d'ingénieur informatique en 2ème année à l'ISIMA.
-    Ce projet consiste à utilisée des méthode vue au cours de notre formation afin de programmée un srcipt en python ou en matlab permettant de pouvoir passée d'un simple nuage de point (en 3D) à une surface correspondante.
+    Ce projet vise à reconstruire une **surface 3D** à partir d'une **carte bathymétrique**.  
+Le pipeline permet de transformer une **image contenant des courbes de niveau** en **maillage 3D triangulé** exploitable en simulation.
+    **Nous avont appliquer ce processus afin au cas pratique du lac d'aydat**
 
-### Cas d'utilisation
-    Ce type de projet est utile dans différent cas. Par exemple, quand on veux modélisée les fond marain (ou d'un lac), avec un tel programme, il y aurait alors besoin de prendre la profondeur que à certain points.
+---
+
+## Pipeline
+Le processus comprend plusieurs étapes :
+
+1. Extraction des profondeurs depuis l'image
+2. Reconstruction des courbes de niveau
+3. Génération d'un nuage de points
+4. Triangulation de Delaunay contrainte
+5. Export du maillage au format `.obj`
+
+---
+
+## Structure du projet
+../  
+├── data/  
+│ ├── final/  
+| | ├── Lake_Aydat_Bicubic_Delaunay.obj  
+| | ├── Lake_Aydat_CDT.obj  
+| | ├── Lake_Aydat_curves.png  
+| | ├── Lake_Aydat_Delaunay.obj  
+| | ├── Lake_Aydat_mesure_simu.png  
+| | └── Lake_Aydat_nuage_points.png  
+| |  
+│ ├── processed/  
+│ | ├── curves/  
+│ | | ├── Lake_Aydat_lines.csv  
+│ | | └── Lake_Aydat_points.csv  
+│ | └── point_cloud/  
+│ |   └── Lake_Aydat.csv  
+| |
+│ └── raw/  
+|   └── map/  
+|     └── Lake_Aydat/  
+|       ├── Lake_Aydat_traitee.png  
+|       └── légende.csv  
+|  
+└── src/  
+  ├── extraction/  
+  │ └── traitement.py  
+  ├── io/  
+  │ └── RAndW.py  
+  ├── mesure/  
+  │ └── mesure.py  
+  ├── processing/  
+  │ ├── Bicubic.py  
+  │ ├── CDT.py  
+  │ └── Delaunay.py  
+  └── visualisation/  
+    └── visualisee.py  
 
 
+- **data/**  
+  Dossier principal contenant l’ensemble des données du projet.  
+    - **data/raw/**  
+      Contient les données brutes, non modifiées par les scriptes.  
+        - **data/raw/map/x**  
+          Contien la carte bathymétrique de x.   
+          Une version corriger de cet carte; chaque niveaux (définit par les ligne de niveaux) est colorier d'une couleurs différente (on recommende de le faire avec un niveaux de gris) sans ligne de separation de niveaux.  
+          Ainsi qu'un ficher légende.txt qui définit fait correspondre a chaque couleurs, le niveaux le plus bas possible..  
+    - **data/processed/**  
+      Dossier contenant l’ensemble des données qui ont deja ete traiter.  
+        - **data/processed/point_cloud**  
+          Dossier contenant l’ensemble des cartes de niveaux transformer en nuage de point par **src/extraction/traitement.py** sous forme de **x.csv**.  
+        - **data/processed/curves**  
+          Dossier contenant l’ensemble des cartes de niveaux approximer par des droites via **src/extraction/traitement.py**.  
+          **x__lines.csv** contien les droites d'approximation.  
+          **x_points.csv** contien les points servant a l'approximation.  
+    - **data/final/x**  
+      Dossier contenant l’ensemble des resultats de x que ce soit les courbes de mesure fait via **src/mesure/mesure.py** ou toutes les surfaces final fait a partir des scriptes de **src/processing/**  
 
-## 📂 Structure du projet
-../
-├── donnee/
-│ ├── raw/
-│ │ └── map/
-│ ├── code/
-│ └── point_cloud/
-├── code/
-│ └── V1/
-└── resultat/
+- **src**  
+  Dossiée renferment les scriptes utiliser.  
+    - **src/extraction/**  
+      Contien les scripte pour extraire les information des cartes.
+        - **src/extraction/traitement.py**  
 
-
-- **donnee/**  
-    Dossier principal contenant l’ensemble des données du projet.
-
-    - **donnee/raw/**  
-        Contient les données brutes, non modifiées.
-
-        - **donnee/map/**
-            Données sous forme de carte.
-
-            - **donnee/map/x**
-                Contien la carte bathymétrique de x. 
-                Une version corriger; chaque niveaux (définit par les ligne de niveaux) est colorier d'une couleurs différente.
-                Ainsi qu'un ficher txt qui définit la légende.
-
-    - **donnee/code**  
-        Scripts utilisés pour le traitement des données brutes. Mes les donnée traité dans donnee/point_cloud/.
-    
-    - **donnee/point_cloud/**
-        Donnée sous forme de nuages de points. Ce format seras celui utilisés dans les différent scripts.
-
-- **code**  
-    Dossiée renferment les différentes version des scipts. Ces scripte sont la passsation du nuage de points à une surface 3D.
-    - **code/Vxx/**
-        Version xx du code pour passée d'un nuage de points à une surface 3D
-
-- **resultat/**  
-    Dossiée qui contient les résultats finaux (model 3D, courbe, ...) générés par les scripts.
-
-
-  
-https://arxiv.org/pdf/2601.14997
