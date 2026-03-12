@@ -2,69 +2,82 @@
 # -*- coding: utf-8 -*-
 
 """
-Script d'analyse de maillages 3D.
+Visualisation 3D d'un nuage de points et de courbes de niveau.
 
-Ce module permet de calculer différentes métriques de qualité sur des surfaces triangulées (format .obj) et de générer des histogrammes comparatifs :
+Description
+-----------
+Ce module permet de visualiser les données géométriques générées
+par le pipeline de reconstruction bathymétrique.
 
-    - aspect ratio des triangles,
-    - mean ratio,
-    - distribution des angles,
-    - condition number des éléments.
+Il prend en charge deux types de représentations 3D :
+    - un nuage de points coloré selon la profondeur,
+    - des courbes de niveau issues de l'algorithme Marching Squares.
 
-Les figures générées sont sauvegardées automatiquement au format PNG.
+Le pipeline de visualisation est le suivant :
+    1. Lecture d'un nuage de points 3D au format CSV.
+    2. Lecture des points et segments de courbes de niveau au format CSV.
+    3. Génération des figures 3D via Matplotlib.
+    4. Sauvegarde automatique des figures au format PNG.
 
-Utilisation en ligne de commande
---------------------------------
+Fonctionnalités principales
+---------------------------
+- Affichage du nuage de points coloré selon la coordonnée Z (colormap "viridis").
+- Tracé des courbes de niveau dans le plan (X, Y) à l'altitude Z correspondante.
+- Normalisation automatique des couleurs entre la profondeur minimale et maximale.
+- Sauvegarde des figures à 300 dpi.
 
-Traitement d'un seul fichier :
+Entrées attendues
+-----------------
+Nuage de points (CSV)
+    Colonnes : x, y, z
+    Coordonnées métriques, profondeur signée.
 
-    python script.py --name chemin/vers/maillage.obj
+Points de courbes (CSV)
+    Colonnes : x, y, z
+    Points servant à l'approximation des courbes de niveau.
 
-Traitement de tous les fichiers .obj d'un dossier :
+Segments de courbes (CSV)
+    Colonnes : id, idx, idy, depth
+    - idx, idy : indices des points extrémités du segment
+    - id       : identifiant de la courbe (-1 si segment isolé)
+    - depth    : profondeur du segment
 
-    python script.py --all chemin/vers/dossier/
+Sorties générées
+----------------
+Image PNG du nuage de points
+    Fichier : {name}_nuage_points.png
 
-Optionnel :
+Image PNG des courbes de niveau
+    Fichier : {name}_curves.png
 
-    --o nom_fichier.png
-        Définit le nom du fichier image de sortie.
-        Par défaut :
-            - <fichier>_mesure_simu.png
-            - <dossier>/<dossier>_mesure_simu.png
+Paramètres CLI
+--------------
+--name : str
+    Nom du jeu de données (sans extension). Par défaut : "Lake_Aydat".
+--p :
+    Afficher uniquement le nuage de points.
+--c :
+    Afficher uniquement les courbes de niveau.
+--o : str
+    Dossier de sortie des images générées.
 
-Logique des options
+Notes techniques
+----------------
+- Si ni --p ni --c ne sont spécifiés, les deux visualisations sont générées.
+- Les figures sont sauvegardées puis fermées automatiquement pour libérer la mémoire.
+- Une vue en plan des courbes peut être activée en décommentant
+  ax.view_init(elev=90, azim=0) dans plot_curves().
+- Les dossiers de sortie sont créés automatiquement si nécessaire.
+
+Cas d'usage typique
 -------------------
+Contrôle visuel des données extraites avant reconstruction de surface :
+    - vérification de la densité et de la distribution du nuage de points,
+    - validation de la cohérence géométrique des courbes de niveau,
+    - détection d'artefacts ou de lacunes dans l'extraction.
 
-- Si aucune option (--name ou --all) n'est fournie :
-       une erreur est levée (fichier ou dossier requis).
-- Si --name est fourni :
-       traitement du fichier unique.
-- Si --all est fourni :
-       traitement de tous les fichiers .obj du dossier.
-
-Organisation des fichiers
---------------------------
-
-Entrées :
-    - Fichier .obj unique : chemin spécifié via --name
-    - Dossier de fichiers .obj : chemin spécifié via --all
-
-Sortie :
-    - Une figure PNG contenant :
-        - n lignes (une par maillage)
-        - 4 colonnes correspondant aux métriques calculées
-    - La figure est sauvegardée avec une résolution de 300 dpi.
-
-Les dossiers de sortie sont créés automatiquement si nécessaires.
-
-Gestion des erreurs
--------------------
-
-FileNotFoundError
-    Si un fichier spécifié n'existe pas ou si aucun .obj n'est trouvé.
-
-NotADirectoryError
-    Si le chemin fourni avec --all n'est pas un dossier valide.
+------
+Projet de reconstruction bathymétrique à partir d'image traitée.
 """
 
 import os
