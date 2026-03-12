@@ -223,7 +223,7 @@ La triangulation est réalisée avec la bibliothèque `scipy.spatial.Delaunay`.
 ```bash
 python -m src.processing.Delaunay --name y
 ```  
-Le scripte vas alors chercher **./data/processed/point_cloud/y.csv**  
+Le scripte vas alors chercher **./data/processed/point_cloud/y.csv** et cree le ficher **./data/final/y/y_Delaunay.csv**
   
 differentes option sont possible :  
 - `--o < chemin vers le ficher de sortie >.obj` : pour modifier le nom du ficher de sortie. Par defaut : **./data/final/y/y_Delaunay.obj**  
@@ -233,6 +233,43 @@ Le script attend le fichier `CSV` sortie de **./src/extraction/traitement.py**
 Exemple : **./data/processed/point_cloud/Lake_Aydat.csv**  
   
 ### Sortie  
+Le script génère un fichier `.obj`` contenant :  
+```obj
+v x y z # sommets
+f i j k # faces triangulaires
+```  
+où:  
+- `x`, `y` et `z` sont les cordoner du sommet en m  
+- `i`, `j` et `k` sont les indices des sommet du triangles
+
+---  
+
+## Application de la triangulation de Delaunay Restrain  (CDT)
+Scripte : **./src/processing/CDT.py**  
+Ce script permet de générer un **maillage triangulé 3D** à partir :
+
+- d'un **nuage de points 3D**
+- de **segments représentant des courbes de niveau** 
+  
+La triangulation utilisée est une **Constrained Delaunay Triangulation (CDT)**.  
+Contrairement à une triangulation de Delaunay classique, cette méthode **respecte des segments imposés** (PSLG : *Planar Straight Line Graph*), ce qui permet de conserver la géométrie des courbes de niveau dans le maillage final.
+
+Le maillage généré est exporté au format **`.obj`**.
+  
+### Utilisation  
+```bash
+python -m src.processing.CDT --name y
+```  
+Le scripte vas alors chercher **./data/processed/curves/y_lines.csv** et **./data/processed/curves/y_points.csv** puis cree le ficher **./data/final/y/y_CDT.obj**
+  
+differentes option sont possible :  
+- `--o < chemin vers le ficher de sortie >.obj` : pour modifier le nom du ficher de sortie. Par defaut : **./data/final/y/y_CDT.obj**  
+  
+### Entré  
+Le script attend les fichier `CSV` sortie de **./src/extraction/traitement.py**  
+Exemple : **./data/processed/curves/Lake_Aydat_lines.csv** et **./data/processed/curves/Lake_Aydat_points.csv**  
+  
+### Sortie  
 Le script génère un fichier `.obj` contenant :  
 ```obj
 v x y z # sommets
@@ -240,4 +277,68 @@ f i j k # faces triangulaires
 ```  
 où:  
 - `x`, `y` et `z` sont les cordoner du sommet en m  
-- `i`, `j` et `k` sont les indices des sommet du triangles  
+- `i`, `j` et `k` sont les indices des sommet du triangles
+
+---  
+
+## Interpolation bicubique du nuage de points
+Scripte : **./src/processing/Bicubic.py**  
+Ce script permet de générer un **nuage de points interpolé** à partir d'un **nuage de points 3D (x, y, z)** en utilisant une **interpolation bicubique 2D**.
+
+L'interpolation est réalisée sur le plan **(x, y)** afin d'estimer les valeurs **z** sur une **grille régulière**, ce qui permet de densifier le nuage de points avant une étape de triangulation ou de reconstruction de surface.
+
+Le résultat est exporté sous forme de **fichier CSV**.
+  
+### Utilisation  
+```bash
+python -m src.processing.Bicubic --name < chemin vers ficher>/y.csv
+```  
+Le scripte vas alors chercher**./data/processed/point_cloud/y.csv** puis cree le ficher **./data/processed/point_cloud/y_Bicubic.csv**
+  
+differentes option sont possible :  
+- `--M x` : modifie le nombre de points interpolée sur l'axe X. Par defaut : 50
+- `--N x` : modifie le nombre de points interpolée sur l'axe Y. Par defaut : 50
+  
+### Entré  
+Le script attend le fichier `CSV` sortie de **./src/extraction/traitement.py**  
+Exemple : **./data/processed/point_cloud/Lake_Aydat.csv**  
+  
+### Sortie  
+Le script génère un fichier `.csv` contenant :   
+```csv
+x,y,z
+1,2,3
+```  
+en m  
+Voici un exemple : **./data/processed/point_cloud/Lake_Aydat_Bicubic.csv**  
+
+---  
+
+## Visualisation des données 3D
+Scripte : **./src/visualisation/visualisee.py**  
+Ce script permet de **visualiser les données générées dans le pipeline** sous forme de figures 3D :  
+
+- **nuage de points 3D**  
+- **courbes de niveau 3D issues du Marching Squares**  
+
+Les figures sont automatiquement **sauvegardées en images PNG**.  
+  
+### Utilisation  
+```bash
+python -m src.visualisation.visualisee --name y
+```  
+Le scripte vas alors chercher les fichers **./data/processed/point_cloud/y.csv**, **./data/processed/curves/y_lines.csv** et **./data/processed/curves/y_point.csv** puis cree deux immages `.png`
+  
+differentes option sont possible :  
+- `--c` : Pour faire uniquement la representation des courbes d'approximation.
+- `--p` : Pour faire uniquement la representation du nuages de points.
+- `--o < chemin vers le dossier de sortie>` : pour modifier la sortie.
+  
+### Entré  
+Le script attend les fichiers `CSV` sortie de **./src/extraction/traitement.py**  
+Exemple : **./data/processed/point_cloud/Lake_Aydat.csv**, **./data/processed/curves/Lake_Aydat_points.csv** et **./data/processed/curves/Lake_Aydat_lines.csv** 
+  
+### Sortie  
+Le script génère des immages `.png` représentant les donnée extrait.
+
+
